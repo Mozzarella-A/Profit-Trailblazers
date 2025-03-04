@@ -1,0 +1,102 @@
+body {
+    background-color: #0d1b2a;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.login-container, .register-container {
+    background-color: #1b263b;
+    padding: 3rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    width: 35rem;
+}
+
+.logo {
+    width: 80%;
+    max-width: 350px;
+    margin-bottom: 2rem;
+}
+
+h2 {
+    font-size: 2rem;
+    margin: 1.5rem 0;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+input {
+    padding: 1.2rem;
+    border: none;
+    border-radius: 0.6rem;
+    font-size: 1.5rem;
+    background-color: #24344d;
+    color: white;
+    outline: none;
+    width: 90%;
+    align-self: center;
+}
+
+input::placeholder {
+    color: #a3b1c6;
+}
+
+button {
+    background-color: #4a5d75;
+    color: white;
+    border: none;
+    padding: 1.5rem;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: background 0.2s ease-in-out;
+    width: 92%;
+    align-self: center;
+}
+
+button:hover {
+    background-color: #5f7798;
+}
+
+p {
+    margin-top: 2rem;
+    font-size: 1.5rem;
+}
+
+a {
+    color: #a3cef1;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.account-type {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    color: white;
+}
+
+.account-type label {
+    cursor: pointer;
+}
+
+#classCode {
+    margin-top: 1.5rem;
+}
