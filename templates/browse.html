@@ -1,56 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Browse Articles - Komodo HUB</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/browse.css') }}">
-</head>
-<body>
-    <nav class="navbar">
-        <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
-        <ul>
-            <li><a href="#">Courses</a></li>
-            <li><a href="#">Leaderboard</a></li>
-            <li><a href="{{ url_for('write_article') }}">Write an Article</a></li>
-            <li class="active"><a href="#">Browse Articles</a></li>
-        </ul>
-        <a href="#" class="profile-icon">
-            <img src="{{ url_for('static', filename='images/profile.png') }}" alt="Profile">
-        </a>
-    </nav>
-
+{% extends "base.html" %}
+{% block title %}Browse Articles{% endblock %}
+{% block content %}
     <div class="browse-container">
-        <div class="left-section">
-            <div class="box-header">Highest Rated Articles</div>
-            <div class="scroll-box">
-                <p>Explore the best-rated content. Scroll to see more articles.</p>
-                <p>Sample article 1...</p>
-                <p>Sample article 2...</p>
-                <p>Sample article 3...</p>
-                <p>Sample article 4...</p>
-                <p>Sample article 5...</p>
-            </div>
-        </div>
-
-        <div class="right-section">
-            <div class="search-section">
-                <input type="text" placeholder="Search for a specific article..." class="search-bar">
-                <button class="search-btn">Search</button>
-            </div>
-
-            <div class="subgroup-box">
-                <div class="box-header">Choose a Subgroup</div>
-                <div class="scroll-box">
-                    <p>Category 1</p>
-                    <p>Category 2</p>
-                    <p>Category 3</p>
-                    <p>Category 4</p>
-                    <p>Category 5</p>
-                    <p>Category 6</p>
-                </div>
-            </div>
+        <h1>Browse Articles</h1>
+        <p>Explore articles written by students across Indonesia.</p>
+        <div class="article-list">
+            {% if articles %}
+                {% for article in articles %}
+                    <div class="article-item">
+                        <h3>{{ article.subtopic }} <span class="expand-btn">[Expand]</span></h3>
+                        <div class="article-content" style="display: none;">
+                            <p>{{ article.content }}</p>
+                            {% if article.image_filename %}
+                                <img src="{{ url_for('static', filename='images/' + article.image_filename) }}" alt="Article Image" style="max-width: 200px;">
+                            {% endif %}
+                            <p><small>Posted on {{ article.created_at }}</small></p>
+                            {% if user_role != 'teacher' and user_role != 'superuser' %}
+                                <form method="POST" action="{{ url_for('like_article', article_id=article.id) }}">
+                                    <button type="submit" {% if article.liked_by_user %}disabled{% endif %}>
+                                        {% if article.liked_by_user %}
+                                            Liked
+                                        {% else %}
+                                            Like
+                                        {% endif %}
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No articles available.</p>
+            {% endif %}
         </div>
     </div>
-</body>
-</html>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const expandButtons = document.querySelectorAll('.expand-btn');
+            expandButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const content = this.parentElement.nextElementSibling;
+                    if (content.style.display === 'none' || content.style.display === '') {
+                        content.style.display = 'block';
+                        this.textContent = '[Collapse]';
+                    } else {
+                        content.style.display = 'none';
+                        this.textContent = '[Expand]';
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

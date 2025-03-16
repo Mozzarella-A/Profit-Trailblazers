@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+    <div class="profile-container">
+        <h1>Profile</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <label for="theme">Select Theme:</label>
+            <select id="theme" name="theme">
+                <option value="default" {% if user_theme == 'default' %}selected{% endif %}>Default</option>
+                <option value="dark" {% if user_theme == 'dark' %}selected{% endif %}>Dark</option>
+                <option value="ocean" {% if user_theme == 'ocean' %}selected{% endif %}>Ocean</option>
+                <option value="forest" {% if user_theme == 'forest' %}selected{% endif %}>Forest</option>
+                <option value="sunset" {% if user_theme == 'sunset' %}selected{% endif %}>Sunset</option>
+            </select>
+            <label for="avatar">Upload Avatar:</label>
+            <input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg, image/gif">
+            <button type="submit">Save Changes</button>
+        </form>
+        {% if avatar_url %}
+            <h3>Current Avatar:</h3>
+            <img src="{{ url_for('static', filename='images/' + avatar_url) }}" alt="Profile Avatar" style="max-width: 200px;">
+        {% else %}
+            <p>No avatar uploaded yet.</p>
+        {% endif %}
+    </div>
+{% endblock %}

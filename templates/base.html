@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - Komodo HUB</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            {% if user_theme == 'dark' %}
+                background-color: #1a1a1a;
+                color: #ffffff;
+            {% elif user_theme == 'ocean' %}
+                background-color: #e6f0fa;
+                color: #2c3e50;
+            {% elif user_theme == 'forest' %}
+                background-color: #2e4d35;
+                color: #ffffff;
+            {% elif user_theme == 'sunset' %}
+                background-color: #ff6f61;
+                color: #ffffff;
+            {% else %}
+                background-color: #0b3d2e;
+                color: #ffffff;
+            {% endif %}
+        }
+        .navbar {
+            {% if user_theme == 'dark' %}
+                background-color: #333333;
+            {% elif user_theme == 'ocean' %}
+                background-color: #3498db;
+            {% elif user_theme == 'forest' %}
+                background-color: #1a3c34;
+            {% elif user_theme == 'sunset' %}
+                background-color: #d94f44;
+            {% else %}
+                background-color: #0b3d2e;
+            {% endif %}
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+        }
+        .navbar ul {
+            list-style: none;
+            display: flex;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar ul li {
+            margin-right: 15px;
+        }
+        .navbar ul li a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .navbar .profile-icon {
+            margin-left: 15px;
+        }
+        .navbar .profile-icon img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+        }
+        .flash.success {
+            {% if user_theme == 'dark' %}
+                background-color: #2ecc71;
+            {% elif user_theme == 'ocean' %}
+                background-color: #1abc9c;
+            {% else %}
+                background-color: #d4edda;
+                color: #155724;
+            {% endif %}
+        }
+        .flash.error {
+            {% if user_theme == 'dark' %}
+                background-color: #e74c3c;
+            {% elif user_theme == 'ocean' %}
+                background-color: #e67e22;
+            {% else %}
+                background-color: #f8d7da;
+                color: #721c24;
+            {% endif %}
+        }
+        .minimal-header {
+            padding: 10px 20px;
+            background-color: #0b3d2e;
+            text-align: left;
+        }
+        .minimal-header .nav-logo {
+            width: 140px;
+            height: auto;
+        }
+        .access-code {
+            color: #fff;
+            margin-left: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    {% if 'user_id' in session %}
+        <nav class="navbar">
+            <a href="{{ url_for('browse_page') }}">
+                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
+            </a>
+            <ul>
+                <li><a href="{{ url_for('courses') }}">Courses</a></li>
+                <li><a href="{{ url_for('leaderboard') }}">Leaderboard</a></li>
+                <li><a href="{{ url_for('write_page') }}">Write an Article</a></li>
+                <li><a href="{{ url_for('browse_page') }}">Browse Articles</a></li>
+                <li><a href="{{ url_for('school_library') }}">School Library</a></li>
+                <li><a href="{{ url_for('class_tasks') }}">Class Tasks</a></li>
+                <li><a href="{{ url_for('report_sighting') }}">Report Sighting</a></li>
+                <li><a href="{{ url_for('species_page') }}">Species Database</a></li>
+                <li><a href="{{ url_for('messages') }}">Messages</a></li>
+                {% if user_role == 'teacher' %}
+                    <li><a href="{{ url_for('admin_page') }}" class="admin-button">Admin</a></li>
+                {% endif %}
+                {% if user_role == 'superuser' %}
+                    <li><a href="{{ url_for('superuser_dashboard') }}">Superuser Dashboard</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('profile') }}">Profile</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+            <div>
+                {% if unique_access_code %}
+                    <span class="access-code">Code: {{ unique_access_code }}</span>
+                {% endif %}
+                <a href="{{ url_for('profile') }}" class="profile-icon">
+                    {% if avatar_url %}
+                        <img src="{{ url_for('static', filename='images/' + avatar_url) }}" alt="Profile">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/profile.png') }}" alt="Profile">
+                    {% endif %}
+                </a>
+            </div>
+        </nav>
+    {% else %}
+        <header class="minimal-header">
+            <a href="{{ url_for('auth.login') }}">
+                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
+            </a>
+        </header>
+    {% endif %}
+
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

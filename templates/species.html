@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Species Database{% endblock %}
+{% block content %}
+    <div class="library-container">
+        <h1>Endangered Species Database</h1>
+        <p>Learn about Indonesia's endangered endemic species.</p>
+        <div class="library-box">
+            <div class="box-header">Species List</div>
+            <div class="scroll-box">
+                {% if species %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Scientific Name</th>
+                                <th>Est. Population</th>
+                                <th>Primary Threat</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for spec in species %}
+                                <tr>
+                                    <td>{{ spec.name }}</td>
+                                    <td>{{ spec.scientific_name }}</td>
+                                    <td>{{ spec.population_estimate }}</td>
+                                    <td>{{ spec.primary_threat }}</td>
+                                    <td>{{ spec.description }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No species data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

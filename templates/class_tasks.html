@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Class Tasks{% endblock %}
+{% block content %}
+    <div class="class-tasks-container">
+        <h1>Class Tasks</h1>
+        {% for program in programs %}
+            <div class="program">
+                <h2>{{ program.name }}</h2>
+                <p>{{ program.description }}</p>
+                <h3>Quizzes</h3>
+                {% if program.quizzes %}
+                    {% for quiz in program.quizzes %}
+                        <div class="quiz">
+                            <h4>{{ quiz.question }}</h4>
+                            <form method="POST" action="{{ url_for('submit_quiz', quiz_id=quiz.id) }}">
+                                {% for option in quiz.options.split(',') %}
+                                    <label>
+                                        <input type="radio" name="answer" value="{{ option }}" required>
+                                        {{ option }}
+                                    </label><br>
+                                {% endfor %}
+                                <button type="submit">Submit Answer</button>
+                            </form>
+                            {% if quiz.id in program.quiz_results %}
+                                <p>Result: {{ program.quiz_results[quiz.id] }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No quizzes available for this program.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

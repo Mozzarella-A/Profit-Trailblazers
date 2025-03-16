@@ -2,14 +2,13 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_mail import Mail, Message
 from controllers.auth_controller import auth_bp, init_auth
 import os
-from db import save_article, setup_database, get_db_cursor, log_action, save_like, update_avatar
+from db import save_article, setup_database, get_db_cursor, log_action
 from models.user_model import User
 from functools import wraps
 import mysql.connector
 import uuid
 import string
 import random
-import io
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "your_secret_key")
@@ -51,10 +50,6 @@ else:
     print("Database 'komodo_hub' already exists, skipping setup.")
 
 app.register_blueprint(init_auth(mail), url_prefix='/auth')
-
-@app.before_request
-def log_request():
-    print(f"Request: {request.method} {request.url}")
 
 def login_required(f):
     @wraps(f)
@@ -105,22 +100,17 @@ def superuser_required(f):
 
 def get_user_info():
     if 'user_id' not in session:
-        return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None}
+        return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0}
     connection, cursor = get_db_cursor()
     try:
-        cursor.execute("SELECT theme, role, avatar_url, contribution_points, unique_access_code FROM users WHERE id = %s", (session['user_id'],))
+        cursor.execute("SELECT theme, role, avatar_url, contribution_points FROM users WHERE id = %s", (session['user_id'],))
         result = cursor.fetchone()
-        if not result:
-            return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None}
-        user_info = {
-            'theme': result[0] if result[0] else 'default',
-            'role': result[1] if result[1] else None,
-            'avatar_url': result[2] if result[2] else None,
-            'contribution_points': result[3] if result[3] is not None else 0,
-            'unique_access_code': result[4] if result[4] else None
+        return {
+            'theme': result[0] if result else 'default',
+            'role': result[1] if result else None,
+            'avatar_url': result[2] if result else None,
+            'contribution_points': result[3] if result else 0
         }
-        print(f"User info: {user_info}")
-        return user_info
     finally:
         cursor.close()
         connection.close()
@@ -128,7 +118,7 @@ def get_user_info():
 @app.route("/")
 def home():
     user_info = get_user_info()
-    return render_template("login.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("login.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/write", methods=['GET', 'POST'])
 @login_required
@@ -136,20 +126,22 @@ def write_page():
     if request.method == 'POST':
         content = request.form.get('content')
         subtopic = request.form.get('subtopic')
-        image = request.files.get('images')
-        image_filename = None
-        if image and image.filename:
-            if not image.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                flash("Only PNG, JPG, JPEG, and GIF files are allowed.", "error")
-                return redirect(url_for('write_page'))
-            image_filename = f"{uuid.uuid4()}_{image.filename}"
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
-            image.save(image_path)
+        images = request.files.getlist('images')
+        image_filenames = []
+        for image in images:
+            if image and image.filename:
+                if not image.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                    flash("Only PNG, JPG, JPEG, and GIF files are allowed.", "error")
+                    return redirect(url_for('write_page'))
+                filename = f"{uuid.uuid4()}_{image.filename}"
+                image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                image.save(image_path)
+                image_filenames.append(filename)
         if not content or not subtopic:
             flash("Content and subtopic are required.", "error")
             return redirect(url_for('write_page'))
         user_id = session['user_id']
-        save_article(user_id, content, subtopic, image_filename)
+        save_article(user_id, content, subtopic, image_filenames)
         connection, cursor = get_db_cursor()
         try:
             cursor.execute("UPDATE users SET contribution_points = COALESCE(contribution_points, 0) + 5 WHERE id = %s", (user_id,))
@@ -173,7 +165,7 @@ def write_page():
     finally:
         cursor.close()
         connection.close()
-    return render_template("write.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], my_articles=my_articles, unique_access_code=user_info['unique_access_code'])
+    return render_template("write.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], my_articles=my_articles)
 
 @app.route("/browse")
 def browse_page():
@@ -194,7 +186,7 @@ def browse_page():
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("browse.html", articles=articles, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("browse.html", articles=articles, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/like_article/<int:article_id>", methods=['POST'])
 @login_required
@@ -232,7 +224,7 @@ def leaderboard():
                 'username': row[0],
                 'total_points': int(row[1]) if row[1] is not None else 0,
                 'article_count': int(row[2]) if row[2] is not None else 0,
-                'like_count': int(row[3] if row[3] is not None else 0),
+                'like_count': int(row[3]) if row[3] is not None else 0,
                 'quiz_count': int(row[4]) if row[4] is not None else 0
             }
             leaderboard.append(user_data)
@@ -243,12 +235,12 @@ def leaderboard():
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("leaderboard.html", leaderboard=leaderboard, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("leaderboard.html", leaderboard=leaderboard, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/courses")
 def courses():
     user_info = get_user_info()
-    return render_template("courses.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code']) if os.path.exists("templates/courses.html") else "Courses Page (Placeholder)"
+    return render_template("courses.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url']) if os.path.exists("templates/courses.html") else "Courses Page (Placeholder)"
 
 @app.route("/school_library")
 def school_library():
@@ -265,7 +257,7 @@ def school_library():
         columns = [column[0] for column in cursor.description]
         documents = [dict(zip(columns, doc)) for doc in documents]
         user_info = get_user_info()
-        return render_template("school_library.html", documents=documents, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+        return render_template("school_library.html", documents=documents, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
     finally:
         cursor.close()
         connection.close()
@@ -299,7 +291,7 @@ def class_tasks():
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("class_tasks.html", programs=programs, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("class_tasks.html", programs=programs, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/submit_quiz/<int:quiz_id>", methods=['POST'])
 @login_required
@@ -355,12 +347,20 @@ def profile():
             filename = f"{uuid.uuid4()}_{avatar.filename}"
             avatar_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             avatar.save(avatar_path)
-            update_avatar(session['user_id'], filename)
+            User.update_avatar(session['user_id'], filename)
             log_action(session['user_id'], "avatar_updated", f"User {session['user_id']} updated avatar to {filename}")
             flash("Avatar updated successfully!", "success")
         return redirect(url_for('profile'))
     user_info = get_user_info()
-    return render_template("profile.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    connection, cursor = get_db_cursor()
+    try:
+        cursor.execute("SELECT avatar_url FROM users WHERE id = %s", (session['user_id'],))
+        user = cursor.fetchone()
+        avatar_url = user[0] if user else None
+    finally:
+        cursor.close()
+        connection.close()
+    return render_template("profile.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=avatar_url)
 
 @app.route("/admin")
 @login_required
@@ -377,7 +377,7 @@ def admin_page():
         user_columns = [column[0] for column in cursor.description]
         users = [dict(zip(user_columns, user)) for user in users]
         user_info = get_user_info()
-        return render_template("admin.html", articles=articles, users=users, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+        return render_template("admin.html", articles=articles, users=users, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
     finally:
         cursor.close()
         connection.close()
@@ -464,7 +464,12 @@ def class_management():
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("class_management.html", students=students_list, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    response = render_template("class_management.html", students=students_list, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
+    response = app.make_response(response)
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route("/admin/student_progress/<int:student_id>")
 @login_required
@@ -488,7 +493,7 @@ def student_progress(student_id):
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("student_progress.html", student=student_dict, articles=articles, quiz_results=quiz_results, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("student_progress.html", student=student_dict, articles=articles, quiz_results=quiz_results, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/messages", methods=['GET', 'POST'])
 @login_required
@@ -528,7 +533,7 @@ def messages():
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("messages.html", users=users, messages=messages, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("messages.html", users=users, messages=messages, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/report_sighting", methods=['GET', 'POST'])
 @login_required
@@ -558,7 +563,7 @@ def report_sighting():
             connection.close()
         return redirect(url_for('report_sighting'))
     user_info = get_user_info()
-    return render_template("report_sighting.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("report_sighting.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/school/<class_code>")
 def school_profile(class_code):
@@ -585,7 +590,7 @@ def school_profile(class_code):
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("school_profile.html", school=school, documents=documents, articles=articles, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("school_profile.html", school=school, documents=documents, articles=articles, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/superuser")
 @login_required
@@ -611,7 +616,7 @@ def superuser_dashboard():
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("superuser_dashboard.html", schools=schools, users=users, stats={'students': student_count, 'teachers': teacher_count, 'articles': article_count, 'sightings': sighting_count}, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("superuser_dashboard.html", schools=schools, users=users, stats={'students': student_count, 'teachers': teacher_count, 'articles': article_count, 'sightings': sighting_count}, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/species")
 def species_page():
@@ -625,7 +630,7 @@ def species_page():
         cursor.close()
         connection.close()
     user_info = get_user_info()
-    return render_template("species.html", species=species, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("species.html", species=species, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'])
 
 @app.route("/logout")
 def logout():

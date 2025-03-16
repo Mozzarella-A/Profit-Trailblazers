@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Student Progress - {{ student.username }}{% endblock %}
+{% block content %}
+    <div class="student-progress-container">
+        <h1>Progress for {{ student.username }}</h1>
+        <p>Email: {{ student.email }}</p>
+        <p>Class Code: {{ student.class_code if student.class_code else 'N/A' }}</p>
+        <p>Contribution Points: {{ student.contribution_points }}</p>
+        <h2>Articles</h2>
+        {% if articles %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Subtopic</th>
+                        <th>Content</th>
+                        <th>Image</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for article in articles %}
+                        <tr>
+                            <td>{{ article.id }}</td>
+                            <td>{{ article.subtopic }}</td>
+                            <td>{{ article.content|truncate(100) }}</td>
+                            <td>
+                                {% if article.image_data %}
+                                    <img src="data:image/jpeg;base64,{{ article.image_data|to_base64 }}" alt="Article Image" style="max-width: 100px;">
+                                {% else %}
+                                    No Image
+                                {% endif %}
+                            </td>
+                            <td>{{ article.created_at }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No articles submitted.</p>
+        {% endif %}
+        <h2>Quiz Results</h2>
+        {% if quiz_results %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Question</th>
+                        <th>Answer</th>
+                        <th>Correct</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in quiz_results %}
+                        <tr>
+                            <td>{{ result.question }}</td>
+                            <td>{{ result.answer }}</td>
+                            <td>{{ 'Yes' if result.is_correct else 'No' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No quiz results yet.</p>
+        {% endif %}
+    </div>
+{% endblock %}

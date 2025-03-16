@@ -1,42 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Account - Komodo HUB</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
     <div class="register-container">
-        <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="logo">
-
-        <h2>Create an Account</h2>
-        
-        <form action="{{ url_for('auth.register') }}" method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="email" name="email" placeholder="Email" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <input type="password" name="confirm_password" placeholder="Confirm Password" required>
-            
-            <div class="account-type">
-                <label><input type="radio" name="account_type" value="community" checked> Community</label>
-                <label><input type="radio" name="account_type" value="student"> Student</label>
+        <h1>Register</h1>
+        <p>After registering, you will receive an email to verify your account before you can log in.</p>
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
             </div>
-
-            <input type="text" name="class_code" id="classCode" placeholder="Class Code (Students Only)" style="display: none;">
-
-            <button type="submit">Create Account</button>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password:</label>
+                <input type="password" id="confirm_password" name="confirm_password" required>
+            </div>
+            <div class="form-group">
+                <label for="account_type">Account Type:</label>
+                <select id="account_type" name="account_type" required>
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                </select>
+            </div>
+            <div class="form-group" id="class_code_group">
+                <label for="class_code">Class Code (Students Only):</label>
+                <select id="class_code" name="class_code">
+                    <option value="ClassA">Class A</option>
+                    <option value="ClassB">Class B</option>
+                </select>
+            </div>
+            <button type="submit">Register</button>
         </form>
-
         <p>Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
     </div>
 
     <script>
-        document.querySelectorAll('input[name="account_type"]').forEach((radio) => {
-            radio.addEventListener('change', function() {
-                document.getElementById('classCode').style.display = this.value === 'student' ? 'block' : 'none';
-            });
+        document.getElementById('account_type').addEventListener('change', function() {
+            const classCodeGroup = document.getElementById('class_code_group');
+            if (this.value === 'student') {
+                classCodeGroup.style.display = 'block';
+            } else {
+                classCodeGroup.style.display = 'none';
+            }
         });
     </script>
-</body>
-</html>
+{% endblock %}

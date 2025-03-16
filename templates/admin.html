@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+    <div class="admin-container">
+        <h1>Admin Dashboard</h1>
+        <h2>Articles</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Subtopic</th>
+                    <th>Content</th>
+                    <th>Image</th>
+                    <th>Created At</th>
+                    <th>Approved</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                    <tr>
+                        <td>{{ article.id }}</td>
+                        <td>{{ article.subtopic }}</td>
+                        <td>{{ article.content|truncate(100) }}</td>
+                        <td>
+                            {% if article.image_filename %}
+                                <img src="{{ url_for('static', filename='images/' + article.image_filename) }}" alt="Article Image" style="max-width: 100px;">
+                            {% else %}
+                                No Image
+                            {% endif %}
+                        </td>
+                        <td>{{ article.created_at }}</td>
+                        <td>{{ 'Yes' if article.approved else 'No' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete_article', article_id=article.id) }}">
+                                <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                            </form>
+                            {% if not article.approved %}
+                                <form method="POST" action="{{ url_for('approve_article', article_id=article.id) }}">
+                                    <button type="submit">Approve</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <h2>Users</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Class Code</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.role }}</td>
+                        <td>{{ user.class_code if user.class_code else 'N/A' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

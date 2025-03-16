@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Report a Sighting{% endblock %}
+{% block content %}
+    <div class="report-sighting-container">
+        <h1>Report a Sighting</h1>
+        <form method="POST">
+            <label for="species">Species:</label>
+            <input type="text" id="species" name="species" required>
+            <label for="location">Location:</label>
+            <input type="text" id="location" name="location" required>
+            <label for="sighting_date">Sighting Date:</label>
+            <input type="datetime-local" id="sighting_date" name="sighting_date" required>
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" rows="5"></textarea>
+            <button type="submit">Submit Sighting</button>
+        </form>
+    </div>
+{% endblock %}

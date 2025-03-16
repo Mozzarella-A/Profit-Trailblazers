@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard{% endblock %}
+{% block content %}
+    <div class="leaderboard-container">
+        <h1>Leaderboard</h1>
+        <p>Top contributors across Komodo HUB.</p>
+        {% if leaderboard %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Username</th>
+                        <th>Total Points</th>
+                        <th>Articles</th>
+                        <th>Likes</th>
+                        <th>Quizzes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in leaderboard %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.total_points }}</td>
+                            <td>{{ user.article_count }}</td>
+                            <td>{{ user.like_count }}</td>
+                            <td>{{ user.quiz_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No contributors yet.</p>
+        {% endif %}
+    </div>
+{% endblock %}
