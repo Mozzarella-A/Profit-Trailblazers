@@ -3,28 +3,52 @@
 {% block content %}
     <div class="messages-container">
         <h1>Messages</h1>
-        <h2>Send a Message</h2>
-        <form method="POST">
-            <label for="receiver_id">Recipient:</label>
-            <select id="receiver_id" name="receiver_id" required>
-                {% for user in users %}
-                    <option value="{{ user.id }}">{{ user.username }}</option>
-                {% endfor %}
-            </select>
-            <label for="content">Message:</label>
-            <textarea id="content" name="content" rows="5" required></textarea>
-            <button type="submit">Send</button>
-        </form>
+        <p>Communicate with {% if user_role == 'student' %}your teacher{% else %}your students{% endif %}.</p>
+
+        <!-- Send Message Form -->
+        <div class="message-form">
+            <h2>Send a Message</h2>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="receiver_id">Recipient:</label>
+                    <select id="receiver_id" name="receiver_id" required>
+                        <option value="" disabled selected>Select a recipient</option>
+                        {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="content">Message:</label>
+                    <textarea id="content" name="content" rows="5" required placeholder="Type your message here..."></textarea>
+                </div>
+                <button type="submit" class="submit-btn">Send</button>
+            </form>
+        </div>
+
+        <!-- Messages Display -->
         <h2>Your Messages</h2>
         {% if messages %}
-            {% for message in messages %}
-                <div class="message">
-                    <p><strong>{{ message.sender_name }}</strong> to you ({{ message.created_at }}):</p>
-                    <p>{{ message.content }}</p>
-                </div>
-            {% endfor %}
+            <div class="message-list">
+                {% for message in messages %}
+                    <div class="message {% if message.sender_id == session['user_id'] %}sent{% else %}received{% endif %}">
+                        <div class="message-header">
+                            <strong>{{ message.sender_name }}</strong> to 
+                            {% if message.sender_id == session['user_id'] %}
+                                {{ users | selectattr('id', 'equalto', message.receiver_id) | first | attr('username') }}
+                            {% else %}
+                                you
+                            {% endif %}
+                            <small>{{ message.created_at }}</small>
+                        </div>
+                        <div class="message-body">
+                            <p>{{ message.content }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         {% else %}
-            <p>No messages yet.</p>
+            <p>No messages yet. Start a conversation!</p>
         {% endif %}
     </div>
 {% endblock %}

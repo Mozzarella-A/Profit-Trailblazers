@@ -1,15 +1,19 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+import os
+from dotenv import load_dotenv
+from datetime import datetime
+import mysql.connector
+import bcrypt
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response
 from flask_mail import Mail, Message
 from controllers.auth_controller import auth_bp, init_auth
-import os
 from db import save_article, setup_database, get_db_cursor, log_action, save_like, update_avatar
 from models.user_model import User
 from functools import wraps
-import mysql.connector
 import uuid
 import string
 import random
-import io
+
+load_dotenv()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "your_secret_key")
@@ -105,12 +109,14 @@ def superuser_required(f):
 
 def get_user_info():
     if 'user_id' not in session:
+        print("No user_id in session, returning default user info")
         return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None}
     connection, cursor = get_db_cursor()
     try:
         cursor.execute("SELECT theme, role, avatar_url, contribution_points, unique_access_code FROM users WHERE id = %s", (session['user_id'],))
         result = cursor.fetchone()
         if not result:
+            print(f"No user found for user_id {session['user_id']}, returning default user info")
             return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None}
         user_info = {
             'theme': result[0] if result[0] else 'default',
@@ -119,7 +125,7 @@ def get_user_info():
             'contribution_points': result[3] if result[3] is not None else 0,
             'unique_access_code': result[4] if result[4] else None
         }
-        print(f"User info: {user_info}")
+        print(f"User info retrieved: {user_info}")
         return user_info
     finally:
         cursor.close()
@@ -270,36 +276,91 @@ def school_library():
         cursor.close()
         connection.close()
 
-@app.route("/class_tasks")
+@app.route("/class_tasks", methods=['GET', 'POST'])
 @login_required
 def class_tasks():
+    user_info = get_user_info()
+    user_role = user_info['role']
     connection, cursor = get_db_cursor()
+
     try:
+        # Fetch user's class code
         cursor.execute("SELECT class_code FROM users WHERE id = %s", (session['user_id'],))
         user = cursor.fetchone()
         class_code = user[0] if user else None
-        if not class_code:
-            flash("You are not assigned to a class.", "error")
-            return redirect(url_for('browse_page'))
-        cursor.execute("SELECT * FROM programs WHERE class_code = %s", (class_code,))
-        programs = cursor.fetchall()
-        programs = [dict(zip([column[0] for column in cursor.description], program)) for program in programs]
-        for program in programs:
-            cursor.execute("SELECT * FROM quizzes WHERE program_id = %s ORDER BY created_at DESC", (program['id'],))
-            quizzes = cursor.fetchall()
-            program['quizzes'] = [dict(zip([column[0] for column in cursor.description], quiz)) for quiz in quizzes]
-            quiz_results = {}
-            for quiz in program['quizzes']:
-                cursor.execute("SELECT answer, is_correct FROM submit_quiz_results WHERE user_id = %s AND quiz_id = %s ORDER BY created_at DESC LIMIT 1", (session['user_id'], quiz['id']))
-                result = cursor.fetchone()
-                if result:
-                    quiz_results[quiz['id']] = "Correct!" if result[1] else "Incorrect. Try again!"
-            program['quiz_results'] = quiz_results
+
+        if user_role == 'student':
+            # Student view: existing logic
+            if not class_code:
+                flash("You are not assigned to a class.", "error")
+                return redirect(url_for('browse_page'))
+            cursor.execute("SELECT * FROM programs WHERE class_code = %s", (class_code,))
+            programs = cursor.fetchall()
+            programs = [dict(zip([column[0] for column in cursor.description], program)) for program in programs]
+            for program in programs:
+                cursor.execute("SELECT * FROM quizzes WHERE program_id = %s ORDER BY created_at DESC", (program['id'],))
+                quizzes = cursor.fetchall()
+                program['quizzes'] = [dict(zip([column[0] for column in cursor.description], quiz)) for quiz in quizzes]
+                quiz_results = {}
+                for quiz in program['quizzes']:
+                    cursor.execute("SELECT answer, is_correct FROM submit_quiz_results WHERE user_id = %s AND quiz_id = %s ORDER BY created_at DESC LIMIT 1", (session['user_id'], quiz['id']))
+                    result = cursor.fetchone()
+                    if result:
+                        quiz_results[quiz['id']] = "Correct!" if result[1] else "Incorrect. Try again!"
+                program['quiz_results'] = quiz_results
+            return render_template("class_tasks.html", programs=programs, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+
+        elif user_role == 'teacher':
+            # Teacher view: manage quizzes for all classes
+            if request.method == 'POST':
+                action = request.form.get('action')
+                
+                if action == 'delete_quiz':
+                    quiz_id = request.form.get('quiz_id')
+                    cursor.execute("DELETE FROM quizzes WHERE id = %s", (quiz_id,))
+                    connection.commit()
+                    log_action(session['user_id'], "quiz_deleted", f"Teacher {session['user_id']} deleted quiz {quiz_id}")
+                    flash("Quiz deleted successfully!", "success")
+                
+                elif action == 'create_quiz':
+                    class_code = request.form.get('class_code')
+                    question = request.form.get('question')
+                    options = request.form.get('options')  # Comma-separated string
+                    correct_answer = request.form.get('correct_answer')
+                    program_id = request.form.get('program_id')
+                    
+                    if not all([class_code, question, options, correct_answer, program_id]):
+                        flash("All fields are required to create a quiz.", "error")
+                    else:
+                        cursor.execute("""
+                            INSERT INTO quizzes (class_code, question, options, correct_answer, program_id, created_at)
+                            VALUES (%s, %s, %s, %s, %s, NOW())
+                        """, (class_code, question, options, correct_answer, program_id))
+                        connection.commit()
+                        log_action(session['user_id'], "quiz_created", f"Teacher {session['user_id']} created quiz for class {class_code}")
+                        flash("Quiz created successfully!", "success")
+                
+                return redirect(url_for('class_tasks'))
+
+            # Fetch all programs and quizzes for all classes
+            cursor.execute("SELECT * FROM programs ORDER BY class_code")
+            programs = cursor.fetchall()
+            programs = [dict(zip([column[0] for column in cursor.description], program)) for program in programs]
+            for program in programs:
+                cursor.execute("SELECT * FROM quizzes WHERE program_id = %s ORDER BY created_at DESC", (program['id'],))
+                quizzes = cursor.fetchall()
+                program['quizzes'] = [dict(zip([column[0] for column in cursor.description], quiz)) for quiz in quizzes]
+            
+            return render_template("class_tasks_teacher.html", programs=programs, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+
+    except Exception as e:
+        print(f"Error in class_tasks: {e}")
+        flash("An error occurred while loading class tasks.", "error")
+        return redirect(url_for('browse_page'))
     finally:
         cursor.close()
         connection.close()
-    user_info = get_user_info()
-    return render_template("class_tasks.html", programs=programs, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+
 
 @app.route("/submit_quiz/<int:quiz_id>", methods=['POST'])
 @login_required
@@ -343,9 +404,14 @@ def profile():
         theme = request.form.get('theme')
         avatar = request.files.get('avatar')
         if theme in ['default', 'dark', 'ocean', 'forest', 'sunset']:
-            User.update_theme(session['user_id'], theme)
-            log_action(session['user_id'], "theme_updated", f"User {session['user_id']} updated theme to {theme}")
-            flash("Theme updated successfully!", "success")
+            try:
+                User.update_theme(session['user_id'], theme)
+                log_action(session['user_id'], "theme_updated", f"User {session['user_id']} updated theme to {theme}")
+                # Force refresh of user_info by clearing any cached session data
+                session.pop('_user_info_cache', None)  # Optional: only if we add caching later
+                flash("Theme updated successfully!", "success")
+            except Exception as e:
+                flash(f"Error updating theme: {e}", "error")
         else:
             flash("Invalid theme selected.", "error")
         if avatar and avatar.filename:
@@ -358,7 +424,8 @@ def profile():
             update_avatar(session['user_id'], filename)
             log_action(session['user_id'], "avatar_updated", f"User {session['user_id']} updated avatar to {filename}")
             flash("Avatar updated successfully!", "success")
-        return redirect(url_for('profile'))
+        # Add a cache-busting query parameter to force CSS reload
+        return redirect(url_for('profile', _=int(datetime.now().timestamp())))
     user_info = get_user_info()
     return render_template("profile.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
 
@@ -429,42 +496,91 @@ def class_management():
     if request.method == 'POST':
         connection, cursor = get_db_cursor()
         try:
-            student_id = request.form.get('student_id')
-            class_code = request.form.get('class_code')
             action = request.form.get('action')
-            if action == 'assign':
-                cursor.execute("UPDATE users SET class_code = %s WHERE id = %s AND role = 'student'", (class_code, student_id))
-                connection.commit()
-                log_action(session['user_id'], "student_assigned", f"User {session['user_id']} assigned student {student_id} to {class_code}")
-                flash("Student assigned to class successfully!", "success")
-            elif action == 'remove':
-                cursor.execute("UPDATE users SET class_code = NULL WHERE id = %s AND role = 'student'", (student_id,))
-                connection.commit()
-                log_action(session['user_id'], "student_removed", f"User {session['user_id']} removed student {student_id} from class")
-                flash("Student removed from class successfully!", "success")
-            elif action == 'regenerate_code':
-                new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-                while User.find_by_access_code(new_code):
+            
+            # Student management actions
+            if action in ['assign', 'remove', 'regenerate_code']:
+                student_id = request.form.get('student_id')
+                class_code = request.form.get('class_code')
+                
+                if action == 'assign':
+                    cursor.execute("UPDATE users SET class_code = %s WHERE id = %s AND role = 'student'", (class_code, student_id))
+                    connection.commit()
+                    log_action(session['user_id'], "student_assigned", f"User {session['user_id']} assigned student {student_id} to {class_code}")
+                    flash("Student assigned to class successfully!", "success")
+                
+                elif action == 'remove':
+                    cursor.execute("UPDATE users SET class_code = NULL WHERE id = %s AND role = 'student'", (student_id,))
+                    connection.commit()
+                    log_action(session['user_id'], "student_removed", f"User {session['user_id']} removed student {student_id} from class")
+                    flash("Student removed from class successfully!", "success")
+                
+                elif action == 'regenerate_code':
                     new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-                cursor.execute("UPDATE users SET unique_access_code = %s WHERE id = %s AND role = 'student'", (new_code, student_id))
+                    while User.find_by_access_code(new_code):
+                        new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                    cursor.execute("UPDATE users SET unique_access_code = %s WHERE id = %s AND role = 'student'", (new_code, student_id))
+                    connection.commit()
+                    log_action(session['user_id'], "code_regenerated", f"User {session['user_id']} regenerated code for student {student_id}")
+                    flash(f"New access code generated: {new_code}", "success")
+            
+            # Article management actions
+            elif action == 'approve_article':
+                article_id = request.form.get('article_id')
+                cursor.execute("SELECT approved FROM articles WHERE id = %s", (article_id,))
+                was_approved = cursor.fetchone()[0]
+                cursor.execute("UPDATE articles SET approved = 1 WHERE id = %s", (article_id,))
+                if not was_approved:
+                    cursor.execute("UPDATE users SET contribution_points = COALESCE(contribution_points, 0) + 5 WHERE id = (SELECT user_id FROM articles WHERE id = %s)", (article_id,))
                 connection.commit()
-                log_action(session['user_id'], "code_regenerated", f"User {session['user_id']} regenerated code for student {student_id}")
-                flash(f"New access code generated: {new_code}", "success")
+                log_action(session['user_id'], "article_approved", f"User {session['user_id']} approved article {article_id}")
+                flash("Article approved successfully!", "success")
+            
+            elif action == 'delete_article':
+                article_id = request.form.get('article_id')
+                cursor.execute("DELETE FROM articles WHERE id = %s", (article_id,))
+                connection.commit()
+                log_action(session['user_id'], "article_deleted", f"User {session['user_id']} deleted article {article_id}")
+                flash("Article deleted successfully!", "success")
+        
+        except Exception as e:
+            connection.rollback()
+            flash(f"Error processing action: {e}", "error")
         finally:
             cursor.close()
             connection.close()
         return redirect(url_for('class_management'))
+
+    # GET request: fetch both students and articles
     connection, cursor = get_db_cursor()
     try:
+        # Fetch students
         cursor.execute("SELECT id, username, email, class_code, unique_access_code FROM users WHERE role = 'student'")
         students = cursor.fetchall()
-        columns = [column[0] for column in cursor.description]
-        students_list = [dict(zip(columns, student)) for student in students]
+        student_columns = [column[0] for column in cursor.description]
+        students_list = [dict(zip(student_columns, student)) for student in students]
+
+        # Fetch student articles
+        cursor.execute("""
+            SELECT a.id, u.username, a.subtopic, a.content, a.image_filename, a.created_at, a.approved
+            FROM articles a
+            JOIN users u ON a.user_id = u.id
+            WHERE u.role = 'student'
+            ORDER BY a.created_at DESC
+        """)
+        articles = cursor.fetchall()
+        article_columns = [column[0] for column in cursor.description]
+        articles_list = [dict(zip(article_columns, article)) for article in articles]
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        students_list = []
+        articles_list = []
     finally:
         cursor.close()
         connection.close()
+
     user_info = get_user_info()
-    return render_template("class_management.html", students=students_list, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("class_management.html", students=students_list, articles=articles_list, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
 
 @app.route("/admin/student_progress/<int:student_id>")
 @login_required
@@ -557,10 +673,29 @@ def report_sighting():
             cursor.close()
             connection.close()
         return redirect(url_for('report_sighting'))
-    user_info = get_user_info()
-    return render_template("report_sighting.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
 
-@app.route("/school/<class_code>")
+    # Fetch all reported sightings with usernames
+    connection, cursor = get_db_cursor()
+    try:
+        cursor.execute("""
+            SELECT s.species, s.location, s.sighting_date, s.description, s.created_at, u.username
+            FROM sightings s
+            JOIN users u ON s.user_id = u.id
+            ORDER BY s.created_at DESC
+        """)
+        sightings = cursor.fetchall()
+        sighting_columns = [column[0] for column in cursor.description]
+        sightings_list = [dict(zip(sighting_columns, sighting)) for sighting in sightings]
+    except Exception as e:
+        print(f"Error fetching sightings: {e}")
+        sightings_list = []
+    finally:
+        cursor.close()
+        connection.close()
+
+    user_info = get_user_info()
+    return render_template("report_sighting.html", sightings=sightings_list, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    
 def school_profile(class_code):
     connection, cursor = get_db_cursor()
     try:
@@ -631,9 +766,25 @@ def species_page():
 def logout():
     if 'user_id' in session:
         log_action(session['user_id'], "logout", f"User {session['user_id']} logged out")
-    session.pop('user_id', None)
+    session.clear()
     flash("Logged out successfully.", "success")
     return redirect(url_for('auth.login'))
+
+@app.after_request
+def add_header(response):
+    if 'text/css' in response.content_type:
+        # Prevent caching of CSS to ensure theme updates apply immediately
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+@app.route("/styles.css")
+def styles_css():
+    user_info = get_user_info()
+    response = make_response(render_template("styles.css", user_theme=user_info['theme']))
+    response.headers['Content-Type'] = 'text/css'
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8080)

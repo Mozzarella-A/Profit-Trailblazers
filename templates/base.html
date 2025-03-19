@@ -3,147 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% endblock %} - Komodo HUB</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <style>
-        body {
-            {% if user_theme == 'dark' %}
-                background-color: #1a1a1a;
-                color: #ffffff;
-            {% elif user_theme == 'ocean' %}
-                background-color: #e6f0fa;
-                color: #2c3e50;
-            {% elif user_theme == 'forest' %}
-                background-color: #2e4d35;
-                color: #ffffff;
-            {% elif user_theme == 'sunset' %}
-                background-color: #ff6f61;
-                color: #ffffff;
-            {% else %}
-                background-color: #0b3d2e;
-                color: #ffffff;
-            {% endif %}
-        }
-        .navbar {
-            {% if user_theme == 'dark' %}
-                background-color: #333333;
-            {% elif user_theme == 'ocean' %}
-                background-color: #3498db;
-            {% elif user_theme == 'forest' %}
-                background-color: #1a3c34;
-            {% elif user_theme == 'sunset' %}
-                background-color: #d94f44;
-            {% else %}
-                background-color: #0b3d2e;
-            {% endif %}
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-        }
-        .navbar ul {
-            list-style: none;
-            display: flex;
-            margin: 0;
-            padding: 0;
-        }
-        .navbar ul li {
-            margin-right: 15px;
-        }
-        .navbar ul li a {
-            color: #fff;
-            text-decoration: none;
-        }
-        .navbar .profile-icon {
-            margin-left: 15px;
-        }
-        .navbar .profile-icon img {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-        }
-        .flash.success {
-            {% if user_theme == 'dark' %}
-                background-color: #2ecc71;
-            {% elif user_theme == 'ocean' %}
-                background-color: #1abc9c;
-            {% else %}
-                background-color: #d4edda;
-                color: #155724;
-            {% endif %}
-        }
-        .flash.error {
-            {% if user_theme == 'dark' %}
-                background-color: #e74c3c;
-            {% elif user_theme == 'ocean' %}
-                background-color: #e67e22;
-            {% else %}
-                background-color: #f8d7da;
-                color: #721c24;
-            {% endif %}
-        }
-        .minimal-header {
-            padding: 10px 20px;
-            background-color: #0b3d2e;
-            text-align: left;
-        }
-        .minimal-header .nav-logo {
-            width: 140px;
-            height: auto;
-        }
-        .access-code {
-            color: #fff;
-            margin-left: 15px;
-            font-weight: bold;
-        }
-    </style>
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('styles_css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
-<body>
-    {% if 'user_id' in session %}
-        <nav class="navbar">
-            <a href="{{ url_for('browse_page') }}">
-                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
-            </a>
-            <ul>
-                <li><a href="{{ url_for('courses') }}">Courses</a></li>
-                <li><a href="{{ url_for('leaderboard') }}">Leaderboard</a></li>
-                <li><a href="{{ url_for('write_page') }}">Write an Article</a></li>
-                <li><a href="{{ url_for('browse_page') }}">Browse Articles</a></li>
-                <li><a href="{{ url_for('school_library') }}">School Library</a></li>
-                <li><a href="{{ url_for('class_tasks') }}">Class Tasks</a></li>
-                <li><a href="{{ url_for('report_sighting') }}">Report Sighting</a></li>
-                <li><a href="{{ url_for('species_page') }}">Species Database</a></li>
-                <li><a href="{{ url_for('messages') }}">Messages</a></li>
-                {% if user_role == 'teacher' %}
-                    <li><a href="{{ url_for('admin_page') }}" class="admin-button">Admin</a></li>
-                {% endif %}
-                {% if user_role == 'superuser' %}
-                    <li><a href="{{ url_for('superuser_dashboard') }}">Superuser Dashboard</a></li>
-                {% endif %}
-                <li><a href="{{ url_for('profile') }}">Profile</a></li>
-                <li><a href="{{ url_for('logout') }}">Logout</a></li>
-            </ul>
-            <div>
-                {% if unique_access_code %}
-                    <span class="access-code">Code: {{ unique_access_code }}</span>
-                {% endif %}
-                <a href="{{ url_for('profile') }}" class="profile-icon">
-                    {% if avatar_url %}
-                        <img src="{{ url_for('static', filename='images/' + avatar_url) }}" alt="Profile">
-                    {% else %}
-                        <img src="{{ url_for('static', filename='images/profile.png') }}" alt="Profile">
-                    {% endif %}
-                </a>
-            </div>
-        </nav>
-    {% else %}
-        <header class="minimal-header">
-            <a href="{{ url_for('auth.login') }}">
-                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
-            </a>
-        </header>
-    {% endif %}
-
+<body class="{% block body_class %}{% endblock %}">
+    <!-- Flash Messages -->
     <div class="flash-messages">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -154,8 +19,39 @@
         {% endwith %}
     </div>
 
-    <div class="content">
-        {% block content %}{% endblock %}
-    </div>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="{{ url_for('browse_page') }}">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
+        </a>
+        <ul>
+            <li><a href="{{ url_for('leaderboard') }}" class="{% if request.endpoint == 'leaderboard' %}active{% endif %}">Leaderboard</a></li>
+            <li><a href="{{ url_for('write_page') }}" class="{% if request.endpoint == 'write_page' %}active{% endif %}">Write an Article</a></li>
+            <li><a href="{{ url_for('browse_page') }}" class="{% if request.endpoint == 'browse_page' %}active{% endif %}">Browse Articles</a></li>
+            <li><a href="{{ url_for('school_library') }}" class="{% if request.endpoint == 'school_library' %}active{% endif %}">School Library</a></li>
+            <li><a href="{{ url_for('class_tasks') }}" class="{% if request.endpoint == 'class_tasks' %}active{% endif %}">Class Tasks</a></li>
+            <li><a href="{{ url_for('report_sighting') }}" class="{% if request.endpoint == 'report_sighting' %}active{% endif %}">Report Sighting</a></li>
+            <li><a href="{{ url_for('species_page') }}" class="{% if request.endpoint == 'species_page' %}active{% endif %}">Species Database</a></li>
+            <li><a href="{{ url_for('messages') }}" class="{% if request.endpoint == 'messages' %}active{% endif %}">Messages</a></li>
+            {% if user_role == 'teacher' or user_role == 'superuser' %}
+                <li><a href="{{ url_for('admin_page') }}" class="{% if request.endpoint == 'admin_page' %}active{% endif %}">Admin</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">Profile</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+        {% if unique_access_code %}
+            <span class="access-code">Access Code: {{ unique_access_code }}</span>
+        {% endif %}
+        {% if avatar_url %}
+            <div class="profile-icon">
+                <img src="{{ url_for('static', filename='images/' + avatar_url) }}" alt="Profile Avatar">
+            </div>
+        {% endif %}
+    </nav>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
 </body>
 </html>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Browse Articles{% endblock %}
+{% block body_class %}browse{% endblock %}
 {% block content %}
     <div class="browse-container">
         <h1>Browse Articles</h1>
@@ -8,16 +9,18 @@
             {% if articles %}
                 {% for article in articles %}
                     <div class="article-item">
-                        <h3>{{ article.subtopic }} <span class="expand-btn">[Expand]</span></h3>
+                        <div class="article-header">
+                            <h3>{{ article.subtopic }} <span class="expand-btn">[Expand]</span></h3>
+                        </div>
                         <div class="article-content" style="display: none;">
                             <p>{{ article.content }}</p>
                             {% if article.image_filename %}
-                                <img src="{{ url_for('static', filename='images/' + article.image_filename) }}" alt="Article Image" style="max-width: 200px;">
+                                <img src="{{ url_for('static', filename='images/' + article.image_filename) }}" alt="Article Image" style="max-width: 200px; border-radius: 8px;">
                             {% endif %}
                             <p><small>Posted on {{ article.created_at }}</small></p>
                             {% if user_role != 'teacher' and user_role != 'superuser' %}
                                 <form method="POST" action="{{ url_for('like_article', article_id=article.id) }}">
-                                    <button type="submit" {% if article.liked_by_user %}disabled{% endif %}>
+                                    <button type="submit" class="like-button" {% if article.liked_by_user %}disabled{% endif %}>
                                         {% if article.liked_by_user %}
                                             Liked
                                         {% else %}
@@ -38,15 +41,27 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const expandButtons = document.querySelectorAll('.expand-btn');
+            console.log('Found expand buttons:', expandButtons.length); // Debug: Check if buttons are found
+
             expandButtons.forEach(button => {
                 button.addEventListener('click', function() {
-                    const content = this.parentElement.nextElementSibling;
-                    if (content.style.display === 'none' || content.style.display === '') {
-                        content.style.display = 'block';
-                        this.textContent = '[Collapse]';
+                    // Traverse up to article-header, then find the next sibling (article-content)
+                    const articleHeader = this.closest('.article-header');
+                    const content = articleHeader.nextElementSibling;
+                    
+                    console.log('Button clicked:', this); // Debug: Confirm click
+                    console.log('Content element:', content); // Debug: Confirm content element
+
+                    if (content) {
+                        if (content.style.display === 'none' || content.style.display === '') {
+                            content.style.display = 'block';
+                            this.textContent = '[Collapse]';
+                        } else {
+                            content.style.display = 'none';
+                            this.textContent = '[Expand]';
+                        }
                     } else {
-                        content.style.display = 'none';
-                        this.textContent = '[Expand]';
+                        console.error('Content not found for button:', this);
                     }
                 });
             });

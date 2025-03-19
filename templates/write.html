@@ -3,29 +3,76 @@
 {% block content %}
     <div class="write-container">
         <h1>Write an Article</h1>
-        <form method="POST" enctype="multipart/form-data">
-            <label for="subtopic">Subtopic:</label>
-            <input type="text" id="subtopic" name="subtopic" required>
-            <label for="content">Content:</label>
-            <textarea id="content" name="content" rows="10" required></textarea>
-            <label for="images">Upload Images (optional):</label>
-            <input type="file" id="images" name="images" accept="image/png, image/jpeg, image/gif">
-            <button type="submit">Submit Article</button>
-        </form>
-        {% if my_articles %}
-            <h2>Your Approved Articles</h2>
-            {% for article in my_articles %}
-                <div class="article-preview">
-                    <h3>{{ article.subtopic }}</h3>
-                    <p>{{ article.content|truncate(100) }}</p>
-                    {% if article.image_filename %}
-                        <img src="{{ url_for('static', filename='images/' + article.image_filename) }}" alt="Article Image" style="max-width: 200px;">
-                    {% endif %}
-                    <p><small>Posted on {{ article.created_at }}</small></p>
+        <div class="write-sections">
+            <!-- Left Section: Article Submission Form -->
+            <div class="left-section">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="subtopic">Subtopic:</label>
+                        <input type="text" id="subtopic" name="subtopic" required placeholder="Enter the subtopic of your article">
+                    </div>
+                    <div class="form-group">
+                        <label for="content">Content:</label>
+                        <textarea id="content" name="content" rows="10" required placeholder="Write your article here..." oninput="updatePreview()"></textarea>
+                        <p class="character-counter" id="char-counter">Characters: 0</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="images">Upload Image (optional):</label>
+                        <input type="file" id="images" name="images" accept="image/png, image/jpeg, image/gif">
+                    </div>
+                    <button type="submit" class="submit-btn">Submit Article</button>
+                </form>
+            </div>
+
+            <!-- Right Section: Live Preview -->
+            <div class="right-section">
+                <h2>Live Preview</h2>
+                <div class="preview-box">
+                    <h3 id="preview-subtopic">Your Subtopic</h3>
+                    <p id="preview-content">Start typing to see your article preview here...</p>
                 </div>
-            {% endfor %}
+            </div>
+        </div>
+
+        <!-- Approved Articles Section -->
+        <h2>Your Approved Articles</h2>
+        {% if my_articles %}
+            <div class="article-previews">
+                {% for article in my_articles %}
+                    <div class="article-preview">
+                        <h3>{{ article.subtopic }}</h3>
+                        <p>{{ article.content|truncate(100) }}</p>
+                        {% if article.image_filename %}
+                            <img src="{{ url_for('static', filename='images/' + article.image_filename) }}" alt="Article Image" style="max-width: 150px; border-radius: 8px;">
+                        {% endif %}
+                        <p><small>Posted on {{ article.created_at }}</small></p>
+                    </div>
+                {% endfor %}
+            </div>
         {% else %}
-            <p>No approved articles yet.</p>
+            <p>No approved articles yet. Start writing to share your knowledge!</p>
         {% endif %}
     </div>
+
+    <!-- JavaScript for Live Preview and Character Counter -->
+    <script>
+        function updatePreview() {
+            // Update subtopic preview
+            const subtopicInput = document.getElementById('subtopic').value;
+            const previewSubtopic = document.getElementById('preview-subtopic');
+            previewSubtopic.textContent = subtopicInput || 'Your Subtopic';
+
+            // Update content preview
+            const contentInput = document.getElementById('content').value;
+            const previewContent = document.getElementById('preview-content');
+            previewContent.textContent = contentInput || 'Start typing to see your article preview here...';
+
+            // Update character counter
+            const charCounter = document.getElementById('char-counter');
+            charCounter.textContent = `Characters: ${contentInput.length}`;
+        }
+
+        // Initialize preview on page load
+        document.addEventListener('DOMContentLoaded', updatePreview);
+    </script>
 {% endblock %}

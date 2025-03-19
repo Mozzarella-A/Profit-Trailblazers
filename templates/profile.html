@@ -4,16 +4,20 @@
     <div class="profile-container">
         <h1>Profile</h1>
         <form method="POST" enctype="multipart/form-data">
-            <label for="theme">Select Theme:</label>
-            <select id="theme" name="theme">
-                <option value="default" {% if user_theme == 'default' %}selected{% endif %}>Default</option>
-                <option value="dark" {% if user_theme == 'dark' %}selected{% endif %}>Dark</option>
-                <option value="ocean" {% if user_theme == 'ocean' %}selected{% endif %}>Ocean</option>
-                <option value="forest" {% if user_theme == 'forest' %}selected{% endif %}>Forest</option>
-                <option value="sunset" {% if user_theme == 'sunset' %}selected{% endif %}>Sunset</option>
-            </select>
-            <label for="avatar">Upload Avatar:</label>
-            <input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg, image/gif">
+            <div class="form-group">
+                <label for="theme">Select Theme:</label>
+                <select id="theme" name="theme">
+                    <option value="default" {% if user_theme == 'default' %}selected{% endif %}>Default</option>
+                    <option value="dark" {% if user_theme == 'dark' %}selected{% endif %}>Dark</option>
+                    <option value="ocean" {% if user_theme == 'ocean' %}selected{% endif %}>Ocean</option>
+                    <option value="forest" {% if user_theme == 'forest' %}selected{% endif %}>Forest</option>
+                    <option value="sunset" {% if user_theme == 'sunset' %}selected{% endif %}>Sunset</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="avatar">Upload Avatar:</label>
+                <input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg, image/gif">
+            </div>
             <button type="submit">Save Changes</button>
         </form>
         {% if avatar_url %}

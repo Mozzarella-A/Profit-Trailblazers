@@ -1,45 +1,46 @@
 {% extends "base.html" %}
-
 {% block title %}Register{% endblock %}
-
 {% block content %}
-    <div class="register-container">
-        <h1>Register</h1>
-        <p>After registering, you will receive an email to verify your account before you can log in.</p>
-        <form method="POST" action="{{ url_for('auth.register') }}">
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+    <div class="split-auth-container">
+        <div class="split-auth-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="auth-logo">
+        </div>
+        <div class="split-auth-right">
+            <div class="auth-form">
+                <h1>Register</h1>
+                <p class="auth-subtext">After registering, you will receive an email to verify your account before you can log in.</p>
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <div class="form-group">
+                        <input type="text" id="username" name="username" required placeholder="Username">
+                    </div>
+                    <div class="form-group">
+                        <input type="email" id="email" name="email" required placeholder="Email">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="password" name="password" required placeholder="Password">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="confirm_password" name="confirm_password" required placeholder="Confirm Password">
+                    </div>
+                    <div class="form-group">
+                        <select id="account_type" name="account_type" required>
+                            <option value="" disabled selected>Account Type</option>
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="class_code_group">
+                        <select id="class_code" name="class_code">
+                            <option value="" disabled selected>Class Code (Students Only)</option>
+                            <option value="ClassA">Class A</option>
+                            <option value="ClassB">Class B</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="auth-btn">Register</button>
+                </form>
+                <p class="auth-link">Already have an account? <a href="{{ url_for('auth.login') }}">Login here</a></p>
             </div>
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password:</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-            </div>
-            <div class="form-group">
-                <label for="account_type">Account Type:</label>
-                <select id="account_type" name="account_type" required>
-                    <option value="student">Student</option>
-                    <option value="teacher">Teacher</option>
-                </select>
-            </div>
-            <div class="form-group" id="class_code_group">
-                <label for="class_code">Class Code (Students Only):</label>
-                <select id="class_code" name="class_code">
-                    <option value="ClassA">Class A</option>
-                    <option value="ClassB">Class B</option>
-                </select>
-            </div>
-            <button type="submit">Register</button>
-        </form>
-        <p>Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
+        </div>
     </div>
 
     <script>

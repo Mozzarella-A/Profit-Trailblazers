@@ -147,6 +147,7 @@ class User:
         try:
             cursor.execute("UPDATE users SET theme = %s WHERE id = %s", (theme, user_id))
             connection.commit()
+            print(f"Theme updated successfully for user {user_id} to {theme}")
             return True
         except Exception as e:
             connection.rollback()
