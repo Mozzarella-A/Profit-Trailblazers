@@ -114,14 +114,12 @@ def superuser_required(f):
 
 def get_user_info():
     if 'user_id' not in session:
-        print("No user_id in session, returning default user info")
         return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None, 'is_superuser': False}
     connection, cursor = get_db_cursor()
     try:
         cursor.execute("SELECT theme, role, avatar_url, contribution_points, unique_access_code, is_superuser FROM users WHERE id = %s", (session['user_id'],))
         result = cursor.fetchone()
         if not result:
-            print(f"No user found for user_id {session['user_id']}, returning default user info")
             return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None, 'is_superuser': False}
         user_info = {
             'theme': result[0] if result[0] else 'default',
@@ -129,9 +127,9 @@ def get_user_info():
             'avatar_url': result[2] if result[2] else None,
             'contribution_points': result[3] if result[3] is not None else 0,
             'unique_access_code': result[4] if result[4] else None,
-            'is_superuser': bool(result[5]) if result[5] is not None else False
+            'is_superuser': bool(result[5])
         }
-        print(f"DEBUG: User info retrieved for user_id {session['user_id']}: {user_info}")
+        print(f"DEBUG: get_user_info for user_id={session['user_id']}: user_info={user_info}")
         return user_info
     finally:
         cursor.close()
@@ -185,7 +183,14 @@ def write_page():
     finally:
         cursor.close()
         connection.close()
-    return render_template("write.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], my_articles=my_articles, unique_access_code=user_info['unique_access_code'])
+    return render_template("write.html", 
+                          user_theme=user_info['theme'], 
+                          user_role=user_info['role'], 
+                          avatar_url=user_info['avatar_url'], 
+                          my_articles=my_articles, 
+                          unique_access_code=user_info['unique_access_code'],
+                          is_superuser=user_info['is_superuser'],
+                          _=int(datetime.now().timestamp()))
 
 @app.route("/browse")
 def browse_page():
@@ -427,7 +432,13 @@ def profile():
             flash("Avatar updated successfully!", "success")
         return redirect(url_for('profile', _=int(datetime.now().timestamp())))
     user_info = get_user_info()
-    return render_template("profile.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("profile.html", 
+                          user_theme=user_info['theme'], 
+                          user_role=user_info['role'], 
+                          avatar_url=user_info['avatar_url'], 
+                          unique_access_code=user_info['unique_access_code'],
+                          is_superuser=user_info['is_superuser'],
+                          _=int(datetime.now().timestamp()))
 
 @app.route("/admin")
 @login_required
@@ -774,7 +785,8 @@ def superuser_dashboard():
                           user_theme=user_info['theme'], 
                           user_role=user_info['role'], 
                           avatar_url=user_info['avatar_url'], 
-                          unique_access_code=user_info['unique_access_code'])
+                          unique_access_code=user_info['unique_access_code'],
+                          is_superuser=user_info['is_superuser'])
 
 @app.route("/register_entity", methods=['POST'])
 @login_required

@@ -24,27 +24,44 @@
         <a href="{{ url_for('browse_page') }}">
             <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
         </a>
-        <!-- Debug Output -->
-        <p style="color: white;">DEBUG: user_role={{ user_role }}, is_superuser={{ is_superuser }}</p>
         <ul>
-            <li><a href="{{ url_for('leaderboard') }}" class="{% if request.endpoint == 'leaderboard' %}active{% endif %}">Leaderboard</a></li>
-            <li><a href="{{ url_for('write_page') }}" class="{% if request.endpoint == 'write_page' %}active{% endif %}">Write an Article</a></li>
-            <li><a href="{{ url_for('browse_page') }}" class="{% if request.endpoint == 'browse_page' %}active{% endif %}">Browse Articles</a></li>
-            <li><a href="{{ url_for('school_library') }}" class="{% if request.endpoint == 'school_library' %}active{% endif %}">School Library</a></li>
-            <li><a href="{{ url_for('class_tasks') }}" class="{% if request.endpoint == 'class_tasks' %}active{% endif %}">Class Tasks</a></li>
-            <li><a href="{{ url_for('report_sighting') }}" class="{% if request.endpoint == 'report_sighting' %}active{% endif %}">Report Sighting</a></li>
-            <li><a href="{{ url_for('species_page') }}" class="{% if request.endpoint == 'species_page' %}active{% endif %}">Species Database</a></li>
-            <li><a href="{{ url_for('messages') }}" class="{% if request.endpoint == 'messages' %}active{% endif %}">Messages</a></li>
-            {% if user_role in ['teacher', 'superuser'] or is_superuser %}
+            <!-- Links for Superusers (Highest Priority) -->
+            {% if (is_superuser | default(False)) == True %}
                 <li>
-                    <!-- Debug the href value -->
-                    <p style="color: white;">DEBUG: Admin link href={% if is_superuser %}{{ url_for('superuser_dashboard') }}{% else %}{{ url_for('admin_page') }}{% endif %}</p>
-                    <a href="{% if is_superuser %}{{ url_for('superuser_dashboard') }}{% else %}{{ url_for('admin_page') }}{% endif %}" 
-                       class="{% if request.endpoint in ['superuser_dashboard', 'admin_page'] %}active{% endif %}">
+                    <a href="{{ url_for('superuser_dashboard') }}" class="{% if request.endpoint == 'superuser_dashboard' %}active{% endif %}">
                         Admin
                     </a>
                 </li>
+            {% else %}
+                <!-- Links for Students -->
+                {% if user_role == 'student' %}
+                    <li><a href="{{ url_for('leaderboard') }}" class="{% if request.endpoint == 'leaderboard' %}active{% endif %}">Leaderboard</a></li>
+                    <li><a href="{{ url_for('write_page') }}" class="{% if request.endpoint == 'write_page' %}active{% endif %}">Write an Article</a></li>
+                    <li><a href="{{ url_for('browse_page') }}" class="{% if request.endpoint == 'browse_page' %}active{% endif %}">Browse Articles</a></li>
+                    <li><a href="{{ url_for('school_library') }}" class="{% if request.endpoint == 'school_library' %}active{% endif %}">School Library</a></li>
+                    <li><a href="{{ url_for('class_tasks') }}" class="{% if request.endpoint == 'class_tasks' %}active{% endif %}">Class Tasks</a></li>
+                    <li><a href="{{ url_for('report_sighting') }}" class="{% if request.endpoint == 'report_sighting' %}active{% endif %}">Report Sighting</a></li>
+                    <li><a href="{{ url_for('species_page') }}" class="{% if request.endpoint == 'species_page' %}active{% endif %}">Species Database</a></li>
+                    <li><a href="{{ url_for('messages') }}" class="{% if request.endpoint == 'messages' %}active{% endif %}">Messages</a></li>
+                {% endif %}
+
+                <!-- Links for Teachers -->
+                {% if user_role == 'teacher' %}
+                    <li><a href="{{ url_for('leaderboard') }}" class="{% if request.endpoint == 'leaderboard' %}active{% endif %}">Leaderboard</a></li>
+                    <li><a href="{{ url_for('browse_page') }}" class="{% if request.endpoint == 'browse_page' %}active{% endif %}">Browse Articles</a></li>
+                    <li><a href="{{ url_for('school_library') }}" class="{% if request.endpoint == 'school_library' %}active{% endif %}">School Library</a></li>
+                    <li><a href="{{ url_for('class_tasks') }}" class="{% if request.endpoint == 'class_tasks' %}active{% endif %}">Class Tasks</a></li>
+                    <li><a href="{{ url_for('report_sighting') }}" class="{% if request.endpoint == 'report_sighting' %}active{% endif %}">Report Sighting</a></li>
+                    <li><a href="{{ url_for('messages') }}" class="{% if request.endpoint == 'messages' %}active{% endif %}">Messages</a></li>
+                    <li>
+                        <a href="{{ url_for('admin_page') }}" class="{% if request.endpoint == 'admin_page' %}active{% endif %}">
+                            Admin
+                        </a>
+                    </li>
+                {% endif %}
             {% endif %}
+
+            <!-- Links for All Users -->
             <li><a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">Profile</a></li>
             <li><a href="{{ url_for('logout') }}">Logout</a></li>
         </ul>
