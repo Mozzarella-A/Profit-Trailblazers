@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Superuser Dashboard{% endblock %}
+{% block content %}
+    <div class="superuser-container">
+        <h1>Superuser Dashboard</h1>
+        <p>Manage accounts, engage with schools and communities, and monitor system activity.</p>
+
+        <!-- Register School or Community -->
+        <div class="superuser-section">
+            <h2>Register School or Community</h2>
+            <form method="POST" action="{{ url_for('register_entity') }}">
+                <div class="form-group">
+                    <label for="entity_name">Name:</label>
+                    <input type="text" id="entity_name" name="entity_name" required placeholder="e.g., Ujung Raya Primary School">
+                </div>
+                <div class="form-group">
+                    <label for="entity_type">Type:</label>
+                    <select id="entity_type" name="entity_type" required>
+                        <option value="" disabled selected>Select type</option>
+                        <option value="school">School</option>
+                        <option value="community">Community</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn">Register</button>
+            </form>
+        </div>
+
+        <!-- Send Email -->
+        <div class="superuser-section">
+            <h2>Send Email to Schools/Communities</h2>
+            <form method="POST" action="{{ url_for('send_email') }}">
+                <div class="form-group">
+                    <label for="email_subject">Subject:</label>
+                    <input type="text" id="email_subject" name="email_subject" required placeholder="e.g., Komodo Hub Update">
+                </div>
+                <div class="form-group">
+                    <label for="email_body">Body:</label>
+                    <textarea id="email_body" name="email_body" rows="5" required placeholder="Type your email message here..."></textarea>
+                </div>
+                <button type="submit" class="submit-btn">Send Email</button>
+            </form>
+        </div>
+
+        <!-- Business Dashboard -->
+        <div class="superuser-section">
+            <h2>Business Dashboard</h2>
+            <div class="dashboard-metrics">
+                <div class="metric">
+                    <h3>Registered Schools</h3>
+                    <p>{{ stats.schools }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Registered Communities</h3>
+                    <p>{{ stats.communities }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Total Users</h3>
+                    <p>{{ stats.users }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Approved Articles</h3>
+                    <p>{{ stats.articles }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Total Sightings</h3>
+                    <p>{{ stats.sightings }}</p>
+                </div>
+            </div>
+
+            <!-- Schools List -->
+            <h2>Schools</h2>
+            {% if schools %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Class Code</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for school in schools %}
+                            <tr>
+                                <td>{{ school.id }}</td>
+                                <td>{{ school.name }}</td>
+                                <td>{{ school.class_code }}</td>
+                                <td>{{ school.created_at }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No schools registered yet.</p>
+            {% endif %}
+
+            <!-- Recent Activity -->
+            <h2>Recent Activity</h2>
+            {% if recent_activity %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in recent_activity %}
+                            <tr>
+                                <td>{{ activity.username }}</td>
+                                <td>{{ activity.action }}</td>
+                                <td>{{ activity.description }}</td>
+                                <td>{{ activity.created_at }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No recent activity.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

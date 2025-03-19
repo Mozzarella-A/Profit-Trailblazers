@@ -77,9 +77,14 @@ def admin_required(f):
             return redirect(url_for('auth.login'))
         connection, cursor = get_db_cursor()
         try:
-            cursor.execute("SELECT role FROM users WHERE id = %s", (session['user_id'],))
-            user_role = cursor.fetchone()
-            if not user_role or user_role[0] != "teacher":
+            cursor.execute("SELECT role, is_superuser FROM users WHERE id = %s", (session['user_id'],))
+            result = cursor.fetchone()
+            user_role = result[0] if result else None
+            is_superuser = bool(result[1]) if result and result[1] is not None else False
+            if is_superuser:
+                # Redirect superusers to their dashboard
+                return redirect(url_for('superuser_dashboard'))
+            if not user_role or user_role != "teacher":
                 flash("You do not have admin privileges.", "error")
                 return redirect(url_for('browse_page'))
         finally:
@@ -110,22 +115,23 @@ def superuser_required(f):
 def get_user_info():
     if 'user_id' not in session:
         print("No user_id in session, returning default user info")
-        return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None}
+        return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None, 'is_superuser': False}
     connection, cursor = get_db_cursor()
     try:
-        cursor.execute("SELECT theme, role, avatar_url, contribution_points, unique_access_code FROM users WHERE id = %s", (session['user_id'],))
+        cursor.execute("SELECT theme, role, avatar_url, contribution_points, unique_access_code, is_superuser FROM users WHERE id = %s", (session['user_id'],))
         result = cursor.fetchone()
         if not result:
             print(f"No user found for user_id {session['user_id']}, returning default user info")
-            return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None}
+            return {'theme': 'default', 'role': None, 'avatar_url': None, 'contribution_points': 0, 'unique_access_code': None, 'is_superuser': False}
         user_info = {
             'theme': result[0] if result[0] else 'default',
             'role': result[1] if result[1] else None,
             'avatar_url': result[2] if result[2] else None,
             'contribution_points': result[3] if result[3] is not None else 0,
-            'unique_access_code': result[4] if result[4] else None
+            'unique_access_code': result[4] if result[4] else None,
+            'is_superuser': bool(result[5]) if result[5] is not None else False
         }
-        print(f"User info retrieved: {user_info}")
+        print(f"DEBUG: User info retrieved for user_id {session['user_id']}: {user_info}")
         return user_info
     finally:
         cursor.close()
@@ -290,7 +296,6 @@ def class_tasks():
         class_code = user[0] if user else None
 
         if user_role == 'student':
-            # Student view: existing logic
             if not class_code:
                 flash("You are not assigned to a class.", "error")
                 return redirect(url_for('browse_page'))
@@ -311,7 +316,6 @@ def class_tasks():
             return render_template("class_tasks.html", programs=programs, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
 
         elif user_role == 'teacher':
-            # Teacher view: manage quizzes for all classes
             if request.method == 'POST':
                 action = request.form.get('action')
                 
@@ -325,7 +329,7 @@ def class_tasks():
                 elif action == 'create_quiz':
                     class_code = request.form.get('class_code')
                     question = request.form.get('question')
-                    options = request.form.get('options')  # Comma-separated string
+                    options = request.form.get('options')
                     correct_answer = request.form.get('correct_answer')
                     program_id = request.form.get('program_id')
                     
@@ -342,7 +346,6 @@ def class_tasks():
                 
                 return redirect(url_for('class_tasks'))
 
-            # Fetch all programs and quizzes for all classes
             cursor.execute("SELECT * FROM programs ORDER BY class_code")
             programs = cursor.fetchall()
             programs = [dict(zip([column[0] for column in cursor.description], program)) for program in programs]
@@ -360,7 +363,6 @@ def class_tasks():
     finally:
         cursor.close()
         connection.close()
-
 
 @app.route("/submit_quiz/<int:quiz_id>", methods=['POST'])
 @login_required
@@ -407,8 +409,7 @@ def profile():
             try:
                 User.update_theme(session['user_id'], theme)
                 log_action(session['user_id'], "theme_updated", f"User {session['user_id']} updated theme to {theme}")
-                # Force refresh of user_info by clearing any cached session data
-                session.pop('_user_info_cache', None)  # Optional: only if we add caching later
+                session.pop('_user_info_cache', None)  # Optional: only if caching is added later
                 flash("Theme updated successfully!", "success")
             except Exception as e:
                 flash(f"Error updating theme: {e}", "error")
@@ -424,7 +425,6 @@ def profile():
             update_avatar(session['user_id'], filename)
             log_action(session['user_id'], "avatar_updated", f"User {session['user_id']} updated avatar to {filename}")
             flash("Avatar updated successfully!", "success")
-        # Add a cache-busting query parameter to force CSS reload
         return redirect(url_for('profile', _=int(datetime.now().timestamp())))
     user_info = get_user_info()
     return render_template("profile.html", user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
@@ -498,7 +498,6 @@ def class_management():
         try:
             action = request.form.get('action')
             
-            # Student management actions
             if action in ['assign', 'remove', 'regenerate_code']:
                 student_id = request.form.get('student_id')
                 class_code = request.form.get('class_code')
@@ -524,7 +523,6 @@ def class_management():
                     log_action(session['user_id'], "code_regenerated", f"User {session['user_id']} regenerated code for student {student_id}")
                     flash(f"New access code generated: {new_code}", "success")
             
-            # Article management actions
             elif action == 'approve_article':
                 article_id = request.form.get('article_id')
                 cursor.execute("SELECT approved FROM articles WHERE id = %s", (article_id,))
@@ -551,16 +549,13 @@ def class_management():
             connection.close()
         return redirect(url_for('class_management'))
 
-    # GET request: fetch both students and articles
     connection, cursor = get_db_cursor()
     try:
-        # Fetch students
         cursor.execute("SELECT id, username, email, class_code, unique_access_code FROM users WHERE role = 'student'")
         students = cursor.fetchall()
         student_columns = [column[0] for column in cursor.description]
         students_list = [dict(zip(student_columns, student)) for student in students]
 
-        # Fetch student articles
         cursor.execute("""
             SELECT a.id, u.username, a.subtopic, a.content, a.image_filename, a.created_at, a.approved
             FROM articles a
@@ -674,7 +669,6 @@ def report_sighting():
             connection.close()
         return redirect(url_for('report_sighting'))
 
-    # Fetch all reported sightings with usernames
     connection, cursor = get_db_cursor()
     try:
         cursor.execute("""
@@ -695,7 +689,7 @@ def report_sighting():
 
     user_info = get_user_info()
     return render_template("report_sighting.html", sightings=sightings_list, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
-    
+
 def school_profile(class_code):
     connection, cursor = get_db_cursor()
     try:
@@ -722,31 +716,130 @@ def school_profile(class_code):
     user_info = get_user_info()
     return render_template("school_profile.html", school=school, documents=documents, articles=articles, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
 
-@app.route("/superuser")
+@app.route("/superuser", methods=['GET'])
 @login_required
 @superuser_required
 def superuser_dashboard():
     connection, cursor = get_db_cursor()
     try:
-        cursor.execute("SELECT * FROM schools")
-        schools = cursor.fetchall()
-        schools = [dict(zip([column[0] for column in cursor.description], school)) for school in schools]
-        cursor.execute("SELECT * FROM users WHERE role != 'superuser'")
-        users = cursor.fetchall()
-        users = [dict(zip([column[0] for column in cursor.description], user)) for user in users]
-        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'student'")
-        student_count = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'teacher'")
-        teacher_count = cursor.fetchone()[0]
+        # Fetch stats
+        cursor.execute("SELECT COUNT(*) FROM schools WHERE class_code LIKE 'Class%'")
+        school_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM schools WHERE class_code NOT LIKE 'Class%'")
+        community_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role != 'superuser'")
+        user_count = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM articles WHERE approved = 1")
         article_count = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM sightings")
         sighting_count = cursor.fetchone()[0]
+        stats = {
+            'schools': school_count,
+            'communities': community_count,
+            'users': user_count,
+            'articles': article_count,
+            'sightings': sighting_count
+        }
+
+        # Fetch schools
+        cursor.execute("SELECT * FROM schools ORDER BY created_at DESC")
+        schools = cursor.fetchall()
+        schools = [dict(zip([column[0] for column in cursor.description], school)) for school in schools]
+
+        # Fetch recent activity
+        cursor.execute("""
+            SELECT u.username, a.action, a.details, a.created_at 
+            FROM audit_logs a 
+            LEFT JOIN users u ON a.user_id = u.id 
+            ORDER BY a.created_at DESC 
+            LIMIT 10
+        """)
+        recent_activity = cursor.fetchall()
+        recent_activity = [dict(zip(['username', 'action', 'description', 'created_at'], activity)) for activity in recent_activity]
+
+    except Exception as e:
+        print(f"Error fetching superuser data: {e}")
+        stats = {'schools': 0, 'communities': 0, 'users': 0, 'articles': 0, 'sightings': 0}
+        schools = []
+        recent_activity = []
     finally:
         cursor.close()
         connection.close()
+
     user_info = get_user_info()
-    return render_template("superuser_dashboard.html", schools=schools, users=users, stats={'students': student_count, 'teachers': teacher_count, 'articles': article_count, 'sightings': sighting_count}, user_theme=user_info['theme'], user_role=user_info['role'], avatar_url=user_info['avatar_url'], unique_access_code=user_info['unique_access_code'])
+    return render_template("optimal_superuser_dashboard.html", 
+                          stats=stats, 
+                          schools=schools, 
+                          recent_activity=recent_activity, 
+                          user_theme=user_info['theme'], 
+                          user_role=user_info['role'], 
+                          avatar_url=user_info['avatar_url'], 
+                          unique_access_code=user_info['unique_access_code'])
+
+@app.route("/register_entity", methods=['POST'])
+@login_required
+@superuser_required
+def register_entity():
+    entity_name = request.form.get('entity_name')
+    entity_type = request.form.get('entity_type')
+    if not entity_name or not entity_type:
+        flash("Name and type are required.", "error")
+        return redirect(url_for('superuser_dashboard'))
+
+    connection, cursor = get_db_cursor()
+    try:
+        class_code = f"{entity_type[:3].capitalize()}{random.randint(1000, 9999)}"
+        cursor.execute("SELECT COUNT(*) FROM schools WHERE class_code = %s", (class_code,))
+        while cursor.fetchone()[0] > 0:
+            class_code = f"{entity_type[:3].capitalize()}{random.randint(1000, 9999)}"
+        
+        cursor.execute("""
+            INSERT INTO schools (name, class_code, created_at)
+            VALUES (%s, %s, NOW())
+        """, (entity_name, class_code))
+        connection.commit()
+        log_action(session['user_id'], "entity_registered", f"Superuser {session['user_id']} registered {entity_type} '{entity_name}' with class_code {class_code}")
+        flash(f"{entity_type.capitalize()} '{entity_name}' registered successfully with class code {class_code}!", "success")
+    except Exception as e:
+        connection.rollback()
+        flash(f"Error registering entity: {e}", "error")
+    finally:
+        cursor.close()
+        connection.close()
+    return redirect(url_for('superuser_dashboard'))
+
+@app.route("/send_email", methods=['POST'])
+@login_required
+@superuser_required
+def send_email():
+    subject = request.form.get('email_subject')
+    body = request.form.get('email_body')
+    if not subject or not body:
+        flash("Subject and body are required.", "error")
+        return redirect(url_for('superuser_dashboard'))
+
+    connection, cursor = get_db_cursor()
+    try:
+        cursor.execute("SELECT email FROM users WHERE role = 'teacher'")
+        recipients = [row[0] for row in cursor.fetchall()]
+        
+        if not recipients:
+            flash("No recipients found.", "error")
+            return redirect(url_for('superuser_dashboard'))
+
+        msg = Message(subject, recipients=recipients)
+        msg.body = body
+        # mail.send(msg)  # Uncomment when email server is configured
+        print(f"Email sent to {len(recipients)} recipients:\nSubject: {subject}\nBody: {body}")
+        
+        log_action(session['user_id'], "email_sent", f"Superuser {session['user_id']} sent email to {len(recipients)} recipients with subject '{subject}'")
+        flash("Email would have been sent to all teachers! Check the terminal for details.", "success")
+    except Exception as e:
+        flash(f"Error sending email: {e}", "error")
+    finally:
+        cursor.close()
+        connection.close()
+    return redirect(url_for('superuser_dashboard'))
 
 @app.route("/species")
 def species_page():
@@ -773,7 +866,6 @@ def logout():
 @app.after_request
 def add_header(response):
     if 'text/css' in response.content_type:
-        # Prevent caching of CSS to ensure theme updates apply immediately
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
