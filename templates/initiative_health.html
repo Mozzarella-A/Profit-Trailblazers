@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Initiative Health{% endblock %}
+{% block content %}
+    <div class="admin-container">
+        <h1>Initiative Health</h1>
+        <p>Monitor the engagement and activity of your class initiatives over the last 30 days.</p>
+        {% if health_data %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class Code</th>
+                        <th>Total Students</th>
+                        <th>Active Students</th>
+                        <th>Articles Submitted</th>
+                        <th>Quizzes Completed</th>
+                        <th>Health Score (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for class_code, data in health_data.items() %}
+                        <tr>
+                            <td>{{ class_code }}</td>
+                            <td>{{ data.total_students }}</td>
+                            <td>{{ data.active_students }}</td>
+                            <td>{{ data.articles_count }}</td>
+                            <td>{{ data.quizzes_count }}</td>
+                            <td>{{ data.health_score }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No initiative data available.</p>
+        {% endif %}
+    </div>
+{% endblock %}

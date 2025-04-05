@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}4 in a Row{% endblock %}
+{% block content %}
+    <div class="game-container">
+        <h1>4 in a Row</h1>
+        <p>Take a break and play a game! Connect four discs in a row to win.</p>
+        <div id="game-board"></div>
+        <div id="game-status">Player 1's Turn (Red)</div>
+        <button id="reset-game" class="submit-btn">Reset Game</button>
+    </div>
+
+    <script>
+        const board = Array(6).fill().map(() => Array(7).fill(null));
+        let currentPlayer = 1; // 1 = Red, 2 = Yellow
+        let gameOver = false;
+
+        function createBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+            for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < 7; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => dropDisc(col));
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function dropDisc(col) {
+            if (gameOver) return;
+            for (let row = 5; row >= 0; row--) {
+                if (!board[row][col]) {
+                    board[row][col] = currentPlayer;
+                    const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                    cell.classList.add(currentPlayer === 1 ? 'player1' : 'player2');
+                    if (checkWin(row, col)) {
+                        document.getElementById('game-status').textContent = `Player ${currentPlayer} Wins!`;
+                        gameOver = true;
+                    } else if (board.flat().every(cell => cell)) {
+                        document.getElementById('game-status').textContent = "It's a Draw!";
+                        gameOver = true;
+                    } else {
+                        currentPlayer = currentPlayer === 1 ? 2 : 1;
+                        document.getElementById('game-status').textContent = `Player ${currentPlayer}'s Turn (${currentPlayer === 1 ? 'Red' : 'Yellow'})`;
+                    }
+                    return;
+                }
+            }
+        }
+
+        function checkWin(row, col) {
+            const directions = [
+                [0, 1], [1, 0], [1, 1], [1, -1] // Horizontal, Vertical, Diagonal \, Diagonal /
+            ];
+            for (let [dr, dc] of directions) {
+                let count = 1;
+                for (let i = 1; i < 4; i++) {
+                    const r = row + dr * i;
+                    const c = col + dc * i;
+                    if (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === currentPlayer) count++;
+                    else break;
+                }
+                for (let i = 1; i < 4; i++) {
+                    const r = row - dr * i;
+                    const c = col - dc * i;
+                    if (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === currentPlayer) count++;
+                    else break;
+                }
+                if (count >= 4) return true;
+            }
+            return false;
+        }
+
+        document.getElementById('reset-game').addEventListener('click', () => {
+            board.forEach(row => row.fill(null));
+            currentPlayer = 1;
+            gameOver = false;
+            document.getElementById('game-status').textContent = "Player 1's Turn (Red)";
+            createBoard();
+        });
+
+        document.addEventListener('DOMContentLoaded', createBoard);
+    </script>
+{% endblock %}

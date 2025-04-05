@@ -1219,3 +1219,59 @@ p {
         min-width: 100%;
     }
 }
+/* In styles.css, add at the bottom */
+.game-container {
+    max-width: 1200px;
+    margin: 3rem auto;
+    padding: 0 1.5rem;
+    text-align: center;
+}
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(7, 60px);
+    grid-gap: 5px;
+    background: #3498db;
+    padding: 10px;
+    border-radius: 12px;
+    margin: 2rem auto;
+    width: fit-content;
+}
+
+.cell {
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.cell.player1 {
+    background: #e63946; /* Red */
+}
+
+.cell.player2 {
+    background: #f4c430; /* Yellow */
+}
+
+#game-status {
+    font-size: 1.5rem;
+    margin: 1rem 0;
+    font-weight: 600;
+    {% if user_theme == 'dark' %}
+        color: #f4c430;
+    {% elif user_theme == 'ocean' %}
+        color: #1a3c34;
+    {% elif user_theme == 'forest' %}
+        color: #f4c430;
+    {% elif user_theme == 'sunset' %}
+        color: #fff;
+    {% else %}
+        color: #1a3c34;
+    {% endif %}
+}
+
+#reset-game {
+    margin-top: 1rem;
+}

@@ -890,5 +890,84 @@ def styles_css():
     response.headers['Content-Type'] = 'text/css'
     return response
 
+
+@app.route("/four_in_a_row")
+@login_required
+def four_in_a_row():
+    user_info = get_user_info()
+    if user_info['role'] != 'student':
+        flash("Only students can play 4 in a Row!", "error")
+        return redirect(url_for('browse_page'))
+    return render_template("four_in_a_row.html", 
+                          user_theme=user_info['theme'], 
+                          user_role=user_info['role'], 
+                          avatar_url=user_info['avatar_url'], 
+                          unique_access_code=user_info['unique_access_code'],
+                          is_superuser=user_info['is_superuser'])
+
+# In app.py, add this route under admin-related routes
+@app.route("/admin/initiative_health")
+@login_required
+@admin_required
+def initiative_health():
+    connection, cursor = get_db_cursor()
+    try:
+        # Get all classes
+        cursor.execute("SELECT DISTINCT class_code FROM users WHERE class_code IS NOT NULL")
+        classes = [row[0] for row in cursor.fetchall() if row[0]]
+
+        health_data = {}
+        for class_code in classes:
+            # Total students
+            cursor.execute("SELECT COUNT(*) FROM users WHERE class_code = %s AND role = 'student'", (class_code,))
+            total_students = cursor.fetchone()[0]
+
+            # Active students (submitted articles or quizzes in last 30 days)
+            cursor.execute("""
+                SELECT COUNT(DISTINCT u.id)
+                FROM users u
+                LEFT JOIN articles a ON u.id = a.user_id AND a.created_at > NOW() - INTERVAL 30 DAY
+                LEFT JOIN submit_quiz_results sqr ON u.id = sqr.user_id AND sqr.created_at > NOW() - INTERVAL 30 DAY
+                WHERE u.class_code = %s AND u.role = 'student'
+                AND (a.id IS NOT NULL OR sqr.id IS NOT NULL)
+            """, (class_code,))
+            active_students = cursor.fetchone()[0]
+
+            # Article submissions
+            cursor.execute("SELECT COUNT(*) FROM articles a JOIN users u ON a.user_id = u.id WHERE u.class_code = %s AND a.created_at > NOW() - INTERVAL 30 DAY", (class_code,))
+            articles_count = cursor.fetchone()[0]
+
+            # Quiz completions
+            cursor.execute("SELECT COUNT(*) FROM submit_quiz_results sqr JOIN users u ON sqr.user_id = u.id WHERE u.class_code = %s AND sqr.created_at > NOW() - INTERVAL 30 DAY", (class_code,))
+            quizzes_count = cursor.fetchone()[0]
+
+            # Health score (simple metric: % of active students + activity counts)
+            health_score = min(100, round((active_students / max(total_students, 1)) * 50 + (articles_count + quizzes_count) * 5))
+
+            health_data[class_code] = {
+                'total_students': total_students,
+                'active_students': active_students,
+                'articles_count': articles_count,
+                'quizzes_count': quizzes_count,
+                'health_score': health_score
+            }
+
+    except Exception as e:
+        print(f"Error fetching initiative health data: {e}")
+        health_data = {}
+    finally:
+        cursor.close()
+        connection.close()
+
+    user_info = get_user_info()
+    return render_template("initiative_health.html", 
+                          health_data=health_data, 
+                          user_theme=user_info['theme'], 
+                          user_role=user_info['role'], 
+                          avatar_url=user_info['avatar_url'], 
+                          unique_access_code=user_info['unique_access_code'])
+
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8080)

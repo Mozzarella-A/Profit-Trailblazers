@@ -19,7 +19,8 @@
         {% endwith %}
     </div>
 
-    <!-- Navbar -->
+    <!-- Navbar (Only shown if logged in) -->
+    {% if session['user_id'] %}
     <nav class="navbar">
         <a href="{{ url_for('browse_page') }}">
             <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Komodo HUB Logo" class="nav-logo">
@@ -43,6 +44,7 @@
                     <li><a href="{{ url_for('report_sighting') }}" class="{% if request.endpoint == 'report_sighting' %}active{% endif %}">Report Sighting</a></li>
                     <li><a href="{{ url_for('species_page') }}" class="{% if request.endpoint == 'species_page' %}active{% endif %}">Species Database</a></li>
                     <li><a href="{{ url_for('messages') }}" class="{% if request.endpoint == 'messages' %}active{% endif %}">Messages</a></li>
+                    <li><a href="{{ url_for('four_in_a_row') }}" class="{% if request.endpoint == 'four_in_a_row' %}active{% endif %}">4 in a Row</a></li>
                 {% endif %}
 
                 <!-- Links for Teachers -->
@@ -56,6 +58,11 @@
                     <li>
                         <a href="{{ url_for('admin_page') }}" class="{% if request.endpoint == 'admin_page' %}active{% endif %}">
                             Admin
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('initiative_health') }}" class="{% if request.endpoint == 'initiative_health' %}active{% endif %}">
+                            Initiative Health
                         </a>
                     </li>
                 {% endif %}
@@ -74,6 +81,7 @@
             </div>
         {% endif %}
     </nav>
+    {% endif %}
 
     <main>
         {% block content %}
